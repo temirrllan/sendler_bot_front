@@ -1,1 +1,1 @@
-export const BACKEND_URL = "https://a41bc084eafd.ngrok-free.app/api";
+export const BACKEND_URL = "https://tgsendervone.onrender.com/api";
