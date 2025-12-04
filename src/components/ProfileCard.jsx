@@ -1,21 +1,26 @@
-// src/components/ProfileCard.jsx
+// frontend/src/components/ProfileCard.jsx
 import React, { useEffect, useState } from "react";
 import { apiGetMe } from "../api";
 
 export default function ProfileCard() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const u = await apiGetMe(); // u = { tgId, username, firstName, avatarUrl, ... }
-        console.log("ProfileCard user:", u);
-        if (!cancelled) setUser(u || null);
+        const data = await apiGetMe();
+        console.log("ProfileCard data:", data);
+        
+        // ✅ Бэк возвращает { user: {...} }
+        if (!cancelled) setUser(data?.user || null);
       } catch (e) {
         console.error("Failed to load profile:", e);
         if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
@@ -25,22 +30,33 @@ export default function ProfileCard() {
     };
   }, []);
 
-  // Пока user ещё не приехал – ничего не рисуем
-  if (!user) return null;
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-4 animate-pulse">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-slate-700" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-slate-700 rounded w-32" />
+            <div className="h-3 bg-slate-700 rounded w-24" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  console.log("ProfileCard avatarUrl:", user.avatarUrl);
+  if (!user) return null;
 
   const avatar =
     typeof user.avatarUrl === "string" && user.avatarUrl.trim()
       ? user.avatarUrl.trim()
-      : "https://via.placeholder.com/64x64?text=No+Photo";
+      : "https://via.placeholder.com/64x64?text=User";
 
   const fullName =
     [user.firstName, user.lastName].filter(Boolean).join(" ") ||
     user.username ||
-    "Имя";
+    "Пользователь";
 
-  const username = user.username ? `@${user.username}` : "@username";
+  const username = user.username ? `@${user.username}` : "";
   const hasSubscription = !!user.hasAccess;
 
   return (
@@ -51,9 +67,7 @@ export default function ProfileCard() {
           alt={fullName}
           className="h-full w-full object-cover"
           onError={(e) => {
-            console.warn("Avatar load error, fallback");
-            e.currentTarget.src =
-              "https://via.placeholder.com/64x64?text=No+Photo";
+            e.currentTarget.src = "https://via.placeholder.com/64x64?text=User";
           }}
         />
       </div>
@@ -62,7 +76,9 @@ export default function ProfileCard() {
         <div className="text-[18px] leading-5 font-semibold">
           {fullName}
         </div>
-        <div className="text-white/70 text-xs">{username}</div>
+        {username && (
+          <div className="text-white/70 text-xs">{username}</div>
+        )}
       </div>
 
       <div

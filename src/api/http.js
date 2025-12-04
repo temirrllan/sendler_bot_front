@@ -1,121 +1,103 @@
-// src/api/http.js
-import { BACKEND_URL } from "./config";
+// frontend/src/api/http.js
+import { getInitData, isTelegramWebApp } from "../lib/telegram";
 
 /**
- * DEV: сюда можно вписать токен мини-аппы (base64 initData),
- * как у тебя был DEFAULT_MINI_TOKEN.
- * Если оставить пустым — будет смотреть в localStorage.
+ * Backend URL (автоматически определяется из .env)
  */
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api";
 
-
-// сделай так:
-const DEV_MINI_TOKEN =
-  "dXNlcj0lN0IlMjJpZCUyMiUzQTEwMDEzNDE2NTUlMkMlMjJpc19ib3QlMjIlM0FmYWxzZSUyQyUyMmZpcnN0X25hbWUlMjIlM0ElMjJBcnRlbSUyMiUyQyUyMmxhc3RfbmFtZSUyMiUzQSUyMiUyMiUyQyUyMnVzZXJuYW1lJTIyJTNBJTIyRWRpdGg1MDklMjIlMkMlMjJsYW5ndWFnZV9jb2RlJTIyJTNBJTIycnUlMjIlMkMlMjJwaG90b191cmwlMjIlM0ElMjJodHRwcyUzQSUyRiUyRmFwaS50ZWxlZ3JhbS5vcmclMkZmaWxlJTJGYnV0ODM1MzM5ODY2MiUzQUFBSHY2bXVFSU5yY1lHTHN3Yk5jMzNGbUZXWEtMcVVqOGZZJTJGcGhvdG9zJTJGcGlsZV8zLmpwZyUyMiU3RCZhdXRoX2RhdGU9MTc2NDI2NjAyNSZoYXNoPWZha2VfZGV2X2hhc2g=";
+console.log("🔧 Backend URL:", BACKEND_URL);
 
 /**
- * Берём dev-токен:
- * 1) из DEV_MINI_TOKEN (если не пустой)
- * 2) из localStorage.dev_mini_token
+ * DEV MODE: статичный токен для локальной разработки
+ * В production это не используется!
  */
-function getDevMiniToken() {
-  if (DEV_MINI_TOKEN && DEV_MINI_TOKEN.trim()) {
-    return DEV_MINI_TOKEN.trim();
-  }
-
-  const fromStorage = localStorage.getItem("dev_mini_token");
-  if (fromStorage && fromStorage.trim()) {
-    return fromStorage.trim();
-  }
-
-  return "";
-}
+const DEV_MODE = import.meta.env.DEV;
+const DEV_STATIC_TOKEN = import.meta.env.VITE_DEV_TOKEN || "";
 
 /**
- * Достаём initData из Telegram WebApp (боевой режим).
- * Если фронт реально открыт внутри мини-аппы — будет window.Telegram.WebApp.initData
+ * Получить Authorization header
  */
-function getTelegramInitData() {
-  const tgInit = window?.Telegram?.WebApp?.initData;
-  if (tgInit && tgInit.trim()) return tgInit.trim();
-
-  // на всякий случай: можно заранее сохранить raw initData сюда
-  const fromStorage = localStorage.getItem("tg_init_data");
-  if (fromStorage && fromStorage.trim()) return fromStorage.trim();
-
-  return "";
-}
-
-/** Формируем заголовок Authorization */
 function getAuthHeader() {
-  // 1) DEV-режим: готовый base64-токен (как DEFAULT_MINI_TOKEN раньше)
-  const devToken = getDevMiniToken();
-  if (devToken) {
-    // Бэк ждёт просто base64(initData)
-    return { Authorization: devToken };
+  // 1️⃣ Production: используем initData из Telegram WebApp
+  if (isTelegramWebApp()) {
+    const initData = getInitData();
+    
+    if (initData) {
+      // Кодируем initData в base64 (как ожидает backend)
+      const encoded = window.btoa(initData);
+      console.log("✅ Using Telegram initData (production)");
+      return { Authorization: encoded };
+    }
   }
 
-  // 2) Боевой режим: берём raw initData и кодируем в base64
-  const initData = getTelegramInitData();
-  if (initData) {
-    const b64 = window.btoa(initData);
-    return { Authorization: b64 };
+  // 2️⃣ Development: используем статичный токен
+  if (DEV_MODE && DEV_STATIC_TOKEN) {
+    console.log("🛠️ Using dev static token");
+    return { Authorization: DEV_STATIC_TOKEN };
   }
 
-  // 3) Без авторизации
+  // 3️⃣ Fallback: пытаемся взять из localStorage (для старых версий)
+  const stored = localStorage.getItem("dev_mini_token");
+  if (stored) {
+    console.log("⚠️ Using stored token from localStorage (fallback)");
+    return { Authorization: stored };
+  }
+
+  console.warn("❌ No auth token available!");
   return {};
 }
 
 /**
- * Универсальная функция запросов
+ * Универсальная функция для API запросов
  */
 export async function request(path, options = {}) {
   const url = `${BACKEND_URL}${path}`;
 
   const headers = {
     "Content-Type": "application/json",
-    // чтобы ngrok не подсовывал свою HTML-страницу
+    // Для ngrok (если используется в dev)
     "ngrok-skip-browser-warning": "true",
     ...(options.headers || {}),
     ...getAuthHeader(),
   };
 
-  console.log("[HTTP] REQUEST:", { url, headers, options });
+  console.log("[HTTP] REQUEST:", {
+    method: options.method || "GET",
+    url,
+    hasAuth: !!headers.Authorization,
+  });
 
   let res;
   try {
     res = await fetch(url, { ...options, headers });
   } catch (e) {
     console.error("[HTTP] FETCH ERROR:", e);
-    throw e;
+    throw new Error("Не удалось подключиться к серверу");
   }
 
-  console.log("[HTTP] RESPONSE STATUS:", res.status);
+  console.log("[HTTP] RESPONSE:", res.status, res.statusText);
 
+  // Пытаемся распарсить JSON
   const text = await res.text();
   let json = null;
 
   try {
     json = text ? JSON.parse(text) : null;
   } catch (e) {
-    console.error("[HTTP] NOT JSON RESPONSE, RAW TEXT:", text.slice(0, 300));
-    throw new Error(
-      "Сервер вернул не JSON (скорее всего, HTML-страницу ngrok)."
-    );
+    console.error("[HTTP] NOT JSON RESPONSE:", text.slice(0, 300));
+    throw new Error("Сервер вернул некорректный ответ");
   }
 
-  console.log("[HTTP] JSON BODY:", json);
-
+  // Обработка ошибок
   if (!res.ok) {
-    const msg =
-      json?.message ||
-      json?.data?.message ||
-      `HTTP ${res.status}`;
-    const err = new Error(msg);
+    const message = json?.message || json?.data?.message || `HTTP ${res.status}`;
+    const err = new Error(message);
     err.status = res.status;
     err.payload = json;
     throw err;
   }
 
-  // Бэк всегда кладёт полезные данные в data
-  return json?.data;
+  // Бэк всегда возвращает { status, message, data }
+  return json?.data || json;
 }
