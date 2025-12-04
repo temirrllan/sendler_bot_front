@@ -4,10 +4,39 @@
  * Утилиты для работы с Telegram WebApp
  */
 
+/**
+ * Проверка что Telegram WebApp SDK загружен
+ */
+function waitForTelegram(timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    if (window?.Telegram?.WebApp) {
+      resolve(window.Telegram.WebApp);
+      return;
+    }
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      if (window?.Telegram?.WebApp) {
+        clearInterval(interval);
+        resolve(window.Telegram.WebApp);
+      } else if (Date.now() - startTime > timeout) {
+        clearInterval(interval);
+        reject(new Error("Telegram WebApp SDK not loaded"));
+      }
+    }, 100);
+  });
+}
+
+/**
+ * Получить объект Telegram WebApp
+ */
 export function getTelegramWebApp() {
   return window?.Telegram?.WebApp || null;
 }
 
+/**
+ * Проверка что приложение запущено в Telegram
+ */
 export function isTelegramWebApp() {
   return !!getTelegramWebApp();
 }
@@ -130,39 +159,6 @@ export function showConfirm(message, callback) {
 
   tg.showConfirm(message, callback);
 }
-
-
-// frontend/src/lib/telegram.js
-
-/**
- * Проверка что Telegram WebApp SDK загружен
- */
-function waitForTelegram(timeout = 5000) {
-  return new Promise((resolve, reject) => {
-    if (window?.Telegram?.WebApp) {
-      resolve(window.Telegram.WebApp);
-      return;
-    }
-
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      if (window?.Telegram?.WebApp) {
-        clearInterval(interval);
-        resolve(window.Telegram.WebApp);
-      } else if (Date.now() - startTime > timeout) {
-        clearInterval(interval);
-        reject(new Error("Telegram WebApp SDK not loaded"));
-      }
-    }, 100);
-  });
-}
-
-// Остальной код без изменений...
-export function getTelegramWebApp() {
-  return window?.Telegram?.WebApp || null;
-}
-
-// ... (весь остальной код остаётся как есть)
 
 /**
  * Haptic feedback (вибрация)
