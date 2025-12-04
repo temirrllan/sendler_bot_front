@@ -38,7 +38,14 @@ export function getTelegramWebApp() {
  * Проверка что приложение запущено в Telegram
  */
 export function isTelegramWebApp() {
-  return !!getTelegramWebApp();
+  const tg = getTelegramWebApp();
+  const hasInitData = !!tg?.initData;
+  console.log("🔍 isTelegramWebApp:", { 
+    hasTelegram: !!tg, 
+    hasInitData,
+    initDataLength: tg?.initData?.length || 0
+  });
+  return !!tg && hasInitData;
 }
 
 /**
@@ -46,7 +53,12 @@ export function isTelegramWebApp() {
  */
 export function getInitData() {
   const tg = getTelegramWebApp();
-  return tg?.initData || "";
+  const initData = tg?.initData || "";
+  console.log("🔑 getInitData:", {
+    length: initData.length,
+    preview: initData.slice(0, 50) + (initData.length > 50 ? "..." : "")
+  });
+  return initData;
 }
 
 /**
@@ -99,7 +111,6 @@ export function setThemeParams() {
 export function expandWebApp() {
   const tg = getTelegramWebApp();
   if (!tg) return;
-
   tg.expand();
 }
 
@@ -187,7 +198,12 @@ export function initTelegramWebApp() {
   
   // Разворачиваем на весь экран
   expandWebApp();
-  
+  console.log("✅ Telegram WebApp initialized", {
+    user: getTelegramUser(),
+    platform: tg.platform,
+    version: tg.version,
+    initDataLength: tg.initData?.length || 0
+  });
   // Применяем тему
   setThemeParams();
   

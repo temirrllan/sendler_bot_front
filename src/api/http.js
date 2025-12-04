@@ -9,42 +9,29 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/a
 console.log("🔧 Backend URL:", BACKEND_URL);
 
 /**
- * DEV MODE: статичный токен для локальной разработки
- * В production это не используется!
- */
-const DEV_MODE = import.meta.env.DEV;
-const DEV_STATIC_TOKEN = import.meta.env.VITE_DEV_TOKEN || "";
-
-/**
  * Получить Authorization header
  */
 function getAuthHeader() {
-  // 1️⃣ Production: используем initData из Telegram WebApp
+  // ✅ В production и dev используем initData из Telegram WebApp
   if (isTelegramWebApp()) {
     const initData = getInitData();
     
-    if (initData) {
+    if (initData && initData.trim()) {
       // Кодируем initData в base64 (как ожидает backend)
       const encoded = window.btoa(initData);
-      console.log("✅ Using Telegram initData (production)");
+      console.log("✅ Using Telegram initData:", {
+        raw: initData.slice(0, 50) + "...",
+        encoded: encoded.slice(0, 50) + "..."
+      });
       return { Authorization: encoded };
+    } else {
+      console.warn("⚠️ initData is empty!");
     }
+  } else {
+    console.warn("⚠️ Not running in Telegram WebApp");
   }
 
-  // 2️⃣ Development: используем статичный токен
-  if (DEV_MODE && DEV_STATIC_TOKEN) {
-    console.log("🛠️ Using dev static token");
-    return { Authorization: DEV_STATIC_TOKEN };
-  }
-
-  // 3️⃣ Fallback: пытаемся взять из localStorage (для старых версий)
-  const stored = localStorage.getItem("dev_mini_token");
-  if (stored) {
-    console.log("⚠️ Using stored token from localStorage (fallback)");
-    return { Authorization: stored };
-  }
-
-  console.warn("❌ No auth token available!");
+  console.error("❌ No auth token available!");
   return {};
 }
 
@@ -56,7 +43,6 @@ export async function request(path, options = {}) {
 
   const headers = {
     "Content-Type": "application/json",
-    // Для ngrok (если используется в dev)
     "ngrok-skip-browser-warning": "true",
     ...(options.headers || {}),
     ...getAuthHeader(),
@@ -66,6 +52,7 @@ export async function request(path, options = {}) {
     method: options.method || "GET",
     url,
     hasAuth: !!headers.Authorization,
+    authPreview: headers.Authorization ? headers.Authorization.slice(0, 30) + "..." : "none"
   });
 
   let res;
@@ -92,6 +79,7 @@ export async function request(path, options = {}) {
   // Обработка ошибок
   if (!res.ok) {
     const message = json?.message || json?.data?.message || `HTTP ${res.status}`;
+    console.error("[HTTP] ERROR:", { status: res.status, message, json });
     const err = new Error(message);
     err.status = res.status;
     err.payload = json;
