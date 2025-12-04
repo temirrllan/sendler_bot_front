@@ -9,27 +9,33 @@ console.log("🔧 Backend URL:", BACKEND_URL);
  * Получить Authorization header
  */
 function getAuthHeader() {
-  if (isTelegramWebApp()) {
-    const initData = getInitData();
-    
-    if (initData && initData.trim()) {
-      const encoded = window.btoa(initData);
-      console.log("✅ Auth header created:", {
-        initDataLength: initData.length,
-        encodedLength: encoded.length,
-        initDataStart: initData.slice(0, 50),
-        encodedStart: encoded.slice(0, 50)
-      });
-      return { Authorization: encoded };
-    } else {
-      console.warn("⚠️ initData is empty!");
-    }
-  } else {
+  if (!isTelegramWebApp()) {
     console.warn("⚠️ Not running in Telegram WebApp");
+    return {};
   }
 
-  console.error("❌ No auth token available!");
-  return {};
+  const initData = getInitData();
+  
+  if (!initData || !initData.trim()) {
+    console.error("❌ initData is empty!");
+    return {};
+  }
+
+  try {
+    const encoded = btoa(initData);
+    
+    console.log("✅ Auth header created:", {
+      initDataLength: initData.length,
+      encodedLength: encoded.length,
+      initDataPreview: initData.slice(0, 50) + "...",
+      encodedPreview: encoded.slice(0, 50) + "..."
+    });
+    
+    return { Authorization: encoded };
+  } catch (error) {
+    console.error("❌ Failed to encode initData:", error);
+    return {};
+  }
 }
 
 /**
@@ -49,15 +55,16 @@ export async function request(path, options = {}) {
     method: options.method || "GET",
     url,
     hasAuth: !!headers.Authorization,
-    headers: {
-      ...headers,
-      Authorization: headers.Authorization ? `${headers.Authorization.slice(0, 30)}...` : "MISSING"
-    }
+    authPreview: headers.Authorization ? `${headers.Authorization.slice(0, 30)}...` : "MISSING"
   });
 
   let res;
   try {
-    res = await fetch(url, { ...options, headers });
+    res = await fetch(url, { 
+      ...options, 
+      headers,
+      credentials: 'include' // важно для cookies если будут
+    });
   } catch (e) {
     console.error("❌ [FETCH ERROR]:", e);
     throw new Error("Не удалось подключиться к серверу");
@@ -66,7 +73,7 @@ export async function request(path, options = {}) {
   console.log("📥 [HTTP RESPONSE]:", {
     status: res.status,
     statusText: res.statusText,
-    headers: Object.fromEntries(res.headers.entries())
+    contentType: res.headers.get("content-type")
   });
 
   // Получаем текст ответа
@@ -74,9 +81,7 @@ export async function request(path, options = {}) {
   
   console.log("📄 [RESPONSE BODY]:", {
     length: text.length,
-    contentType: res.headers.get("content-type"),
-    preview: text.slice(0, 500),
-    fullText: text // ⬅️ ПОЛНЫЙ текст для отладки
+    preview: text.slice(0, 200),
   });
 
   // Пытаемся распарсить JSON
@@ -89,9 +94,15 @@ export async function request(path, options = {}) {
     } catch (e) {
       console.error("❌ [JSON PARSE ERROR]:", {
         error: e.message,
-        text: text.slice(0, 500)
+        text: text.slice(0, 200)
       });
-      throw new Error(`Сервер вернул некорректный ответ: ${text.slice(0, 100)}`);
+      
+      // Если это HTML (404 страница), показываем понятную ошибку
+      if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+        throw new Error(`Эндпоинт не найден: ${path}`);
+      }
+      
+      throw new Error(`Сервер вернул некорректный ответ`);
     }
   }
 
@@ -105,6 +116,6 @@ export async function request(path, options = {}) {
     throw err;
   }
 
-  // Бэк возвращает { status, message, data }
+  // Backend возвращает { status, message, data }
   return json?.data || json;
 }

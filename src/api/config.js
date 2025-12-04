@@ -1,1 +1,1 @@
-export const BACKEND_URL = "https://tgsendervone.onrender.com/api";
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://tgsendervone.onrender.com/api";

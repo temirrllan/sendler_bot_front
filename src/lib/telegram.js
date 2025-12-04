@@ -1,33 +1,6 @@
 // frontend/src/lib/telegram.js
 
 /**
- * Утилиты для работы с Telegram WebApp
- */
-
-/**
- * Проверка что Telegram WebApp SDK загружен
- */
-function waitForTelegram(timeout = 5000) {
-  return new Promise((resolve, reject) => {
-    if (window?.Telegram?.WebApp) {
-      resolve(window.Telegram.WebApp);
-      return;
-    }
-
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      if (window?.Telegram?.WebApp) {
-        clearInterval(interval);
-        resolve(window.Telegram.WebApp);
-      } else if (Date.now() - startTime > timeout) {
-        clearInterval(interval);
-        reject(new Error("Telegram WebApp SDK not loaded"));
-      }
-    }, 100);
-  });
-}
-
-/**
  * Получить объект Telegram WebApp
  */
 export function getTelegramWebApp() {
@@ -39,12 +12,16 @@ export function getTelegramWebApp() {
  */
 export function isTelegramWebApp() {
   const tg = getTelegramWebApp();
-  const hasInitData = !!tg?.initData;
+  const hasInitData = !!tg?.initData && tg.initData.length > 0;
+  
   console.log("🔍 isTelegramWebApp:", { 
     hasTelegram: !!tg, 
     hasInitData,
-    initDataLength: tg?.initData?.length || 0
+    initDataLength: tg?.initData?.length || 0,
+    platform: tg?.platform,
+    version: tg?.version
   });
+  
   return !!tg && hasInitData;
 }
 
@@ -54,10 +31,14 @@ export function isTelegramWebApp() {
 export function getInitData() {
   const tg = getTelegramWebApp();
   const initData = tg?.initData || "";
+  
   console.log("🔑 getInitData:", {
     length: initData.length,
-    preview: initData.slice(0, 50) + (initData.length > 50 ? "..." : "")
+    preview: initData.slice(0, 100) + (initData.length > 100 ? "..." : ""),
+    hasHash: initData.includes("hash="),
+    hasUser: initData.includes("user=")
   });
+  
   return initData;
 }
 
@@ -66,7 +47,11 @@ export function getInitData() {
  */
 export function getTelegramUser() {
   const tg = getTelegramWebApp();
-  return tg?.initDataUnsafe?.user || null;
+  const user = tg?.initDataUnsafe?.user || null;
+  
+  console.log("👤 getTelegramUser:", user);
+  
+  return user;
 }
 
 /**
@@ -98,11 +83,8 @@ export function setThemeParams() {
   const tg = getTelegramWebApp();
   if (!tg) return;
 
-  // Telegram передаёт цвета темы автоматически
   const params = tg.themeParams;
-  
-  // Можно использовать для кастомизации
-  console.log("Telegram theme params:", params);
+  console.log("🎨 Telegram theme params:", params);
 }
 
 /**
@@ -111,6 +93,8 @@ export function setThemeParams() {
 export function expandWebApp() {
   const tg = getTelegramWebApp();
   if (!tg) return;
+  
+  console.log("📱 Expanding WebApp...");
   tg.expand();
 }
 
@@ -178,7 +162,6 @@ export function hapticFeedback(type = "medium") {
   const tg = getTelegramWebApp();
   if (!tg?.HapticFeedback) return;
 
-  // type: "light" | "medium" | "heavy" | "rigid" | "soft"
   tg.HapticFeedback.impactOccurred(type);
 }
 
@@ -193,25 +176,21 @@ export function initTelegramWebApp() {
     return false;
   }
 
-  // Сообщаем Telegram что приложение готово
-  tg.ready();
-  
-  // Разворачиваем на весь экран
-  expandWebApp();
   console.log("✅ Telegram WebApp initialized", {
     user: getTelegramUser(),
     platform: tg.platform,
     version: tg.version,
     initDataLength: tg.initData?.length || 0
   });
+
+  // Сообщаем Telegram что приложение готово
+  tg.ready();
+  
+  // Разворачиваем на весь экран
+  expandWebApp();
+  
   // Применяем тему
   setThemeParams();
-  
-  console.log("✅ Telegram WebApp initialized", {
-    user: getTelegramUser(),
-    platform: tg.platform,
-    version: tg.version,
-  });
 
   return true;
 }
