@@ -33,13 +33,13 @@ function Badges({ isBot, verified }) {
 }
 
 export default function AddGroup() {
-  const nav = useNavigate();
+  const navigate = useNavigate();
   const { id } = useParams();
   const { bots, setBots } = useApp();
 
   const bot = bots.find((b) => String(b.id) === String(id));
 
-  const [q, setQ] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loadingId, setLoadingId] = useState(null);
 
   const all = useMemo(
@@ -55,14 +55,14 @@ export default function AddGroup() {
   );
 
   const alreadyIds = useMemo(
-    () => (bot?.groupsActive || []).map((g) => (typeof g === "string" ? g : g.id)),
+    () => (bot?.groupsActive || []).map((group) => (typeof group === "string" ? g : g.id)),
     [bot]
   );
 
   const results = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return s ? all.filter((g) => g.title.toLowerCase().includes(s)) : all;
-  }, [q, all]);
+    const s = searchQuery.trim().toLowerCase();
+    return s ? all.filter((group) => group.title.toLowerCase().includes(s)) : all;
+  }, [searchQuery, all]);
 
   const addLocal = (group) => {
     setBots((prev) =>
@@ -74,18 +74,18 @@ export default function AddGroup() {
     );
   };
 
-  const handlePick = async (g) => {
-    if (alreadyIds.includes(g.id)) return;
+  const handlePick = async (group) => {
+    if (alreadyIds.includes(group.id)) return;
 
-    setLoadingId(g.id);
+    setLoadingId(group.id);
     try {
       await fetch("/api/groups/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ botId: id, groupId: g.id }),
+        body: JSON.stringify({ botId: id, groupId: group.id }),
       }).catch(() => {});
 
-      addLocal(g);
+      addLocal(group);
     } finally {
       setLoadingId(null);
     }
@@ -102,38 +102,38 @@ export default function AddGroup() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 max-w-sm mx-auto flex flex-col">
       <header className="px-4 py-4 border-b border-white/10 flex items-center gap-3">
-        <button onClick={() => nav(-1)} className="text-white/80">← Назад</button>
+        <button onClick={() => navigate(-1)} className="text-white/80">← Назад</button>
         <div className="ml-2 font-medium">Добавить группу</div>
       </header>
 
       <main className="flex-1 px-4 py-6 space-y-4">
         <input
           autoFocus
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Поиск"
           className="w-full rounded-2xl bg-slate-900 border border-white/10 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-white/10"
         />
 
         <div className="rounded-2xl border border-white/10 bg-slate-900/60">
-          {results.map((g, idx) => {
-            const already = alreadyIds.includes(g.id);
+          {results.map((group, idx) => {
+            const already = alreadyIds.includes(group.id);
             return (
               <div
-                key={g.id}
+                key={group.id}
                 className={`flex items-center gap-3 px-3 py-2 transition-colors ${
                   idx !== results.length - 1 ? "border-b border-white/10" : ""
                 }`}
               >
-                <Avatar src={g.photo} title={g.title} />
+                <Avatar src={group.photo} title={group.title} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center">
                     <div className="truncate font-medium">{g.title}</div>
-                    <Badges isBot={g.isBot} verified={g.verified} />
+                    <Badges isBot={group.isBot} verified={group.verified} />
                   </div>
                   <div className="text-xs text-white/60">
-                    {g.subtitle}
-                    {g.members ? ` • ${g.members.toLocaleString("ru-RU")} пользователей` : ""}
+                    {group.subtitle}
+                    {group.members ? ` • ${group.members.toLocaleString("ru-RU")} пользователей` : ""}
                   </div>
                 </div>
                 {already ? (
@@ -145,7 +145,7 @@ export default function AddGroup() {
                   </svg>
                 ) : (
                   <button
-                    onClick={() => handlePick(g)}
+                    onClick={() => handlePick(group)}
                     className="text-xs px-2 py-1 rounded-lg border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10"
                   >
                     добавить
