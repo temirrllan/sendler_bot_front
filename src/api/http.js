@@ -6,7 +6,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/a
 console.log("🔧 Backend URL:", BACKEND_URL);
 
 /**
- * Получить Authorization header
+ * Получить Authorization header с base64-encoded initData
  */
 function getAuthHeader() {
   if (!isTelegramWebApp()) {
@@ -22,13 +22,14 @@ function getAuthHeader() {
   }
 
   try {
+    // Кодируем initData в base64
     const encoded = btoa(initData);
     
     console.log("✅ Auth header created:", {
       initDataLength: initData.length,
       encodedLength: encoded.length,
       initDataPreview: initData.slice(0, 50) + "...",
-      encodedPreview: encoded.slice(0, 50) + "..."
+      encodedPreview: encoded.slice(0, 50) + "...",
     });
     
     return { Authorization: encoded };
@@ -40,6 +41,10 @@ function getAuthHeader() {
 
 /**
  * Универсальная функция для API запросов
+ * 
+ * @param {string} path - путь к API эндпоинту
+ * @param {RequestInit} options - опции fetch
+ * @returns {Promise<any>} - данные от сервера
  */
 export async function request(path, options = {}) {
   const url = `${BACKEND_URL}${path}`;
@@ -48,14 +53,16 @@ export async function request(path, options = {}) {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",
     ...(options.headers || {}),
-    ...getAuthHeader(),
+    ...getAuthHeader(), // ← добавляем Authorization
   };
 
-  console.log("📤 [HTTP REQUEST]:", {
+  console.log("📤 [HTTP] Request:", {
     method: options.method || "GET",
     url,
     hasAuth: !!headers.Authorization,
-    authPreview: headers.Authorization ? `${headers.Authorization.slice(0, 30)}...` : "MISSING"
+    authPreview: headers.Authorization 
+      ? `${headers.Authorization.slice(0, 30)}...` 
+      : "MISSING",
   });
 
   let res;
@@ -63,41 +70,41 @@ export async function request(path, options = {}) {
     res = await fetch(url, { 
       ...options, 
       headers,
-      credentials: 'include' // важно для cookies если будут
+      credentials: 'include', // для cookies
     });
-  } catch (e) {
-    console.error("❌ [FETCH ERROR]:", e);
+  } catch (fetchError) {
+    console.error("❌ [HTTP] Fetch error:", fetchError);
     throw new Error("Не удалось подключиться к серверу");
   }
 
-  console.log("📥 [HTTP RESPONSE]:", {
+  console.log("📥 [HTTP] Response:", {
     status: res.status,
     statusText: res.statusText,
-    contentType: res.headers.get("content-type")
+    contentType: res.headers.get("content-type"),
   });
 
   // Получаем текст ответа
   const text = await res.text();
   
-  console.log("📄 [RESPONSE BODY]:", {
+  console.log("📄 [HTTP] Response body:", {
     length: text.length,
     preview: text.slice(0, 200),
   });
 
-  // Пытаемся распарсить JSON
+  // Парсим JSON
   let json = null;
 
   if (text) {
     try {
       json = JSON.parse(text);
-      console.log("✅ [JSON PARSED]:", json);
-    } catch (e) {
-      console.error("❌ [JSON PARSE ERROR]:", {
-        error: e.message,
-        text: text.slice(0, 200)
+      console.log("✅ [HTTP] JSON parsed:", json);
+    } catch (parseError) {
+      console.error("❌ [HTTP] JSON parse error:", {
+        error: parseError.message,
+        text: text.slice(0, 200),
       });
       
-      // Если это HTML (404 страница), показываем понятную ошибку
+      // HTML = 404 страница
       if (text.includes("<!DOCTYPE") || text.includes("<html")) {
         throw new Error(`Эндпоинт не найден: ${path}`);
       }
@@ -106,16 +113,21 @@ export async function request(path, options = {}) {
     }
   }
 
-  // Обработка ошибок
+  // Обработка HTTP ошибок
   if (!res.ok) {
     const message = json?.message || json?.data?.message || `HTTP ${res.status}`;
-    console.error("❌ [HTTP ERROR]:", { status: res.status, message, json });
+    console.error("❌ [HTTP] Error:", { 
+      status: res.status, 
+      message, 
+      json,
+    });
+    
     const err = new Error(message);
     err.status = res.status;
     err.payload = json;
     throw err;
   }
 
-  // Backend возвращает { status, message, data }
+  // Возвращаем data из { status, message, data }
   return json?.data || json;
 }
