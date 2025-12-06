@@ -10,6 +10,7 @@ export default function BotsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [justActivated, setJustActivated] = useState(false); // 👈 новый флаг
 
   async function loadData() {
     try {
@@ -21,6 +22,16 @@ export default function BotsList() {
         const botsData = await apiGetMyBots();
         console.log("✅ Bots loaded:", botsData);
         setBots(botsData.items || []);
+        
+        // 👀 Проверяем, была ли только что активация
+        const wasJustActivated = sessionStorage.getItem('justActivated');
+        if (wasJustActivated === 'true') {
+          setJustActivated(true);
+          sessionStorage.removeItem('justActivated');
+          
+          // Через 3 секунды убираем баннер
+          setTimeout(() => setJustActivated(false), 3000);
+        }
       }
     } catch (e) {
       console.error("❌ Load error:", e);
@@ -63,6 +74,23 @@ export default function BotsList() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="max-w-sm mx-auto p-4 pb-24 space-y-4">
+        
+        {/* 🎉 Баннер успешной активации */}
+        {justActivated && hasAccess && (
+          <div className="rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border border-emerald-400/30 p-4 animate-in fade-in slide-in-from-top duration-500">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 grid place-items-center shrink-0">
+                <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-emerald-100">Доступ активирован!</div>
+                <div className="text-sm text-emerald-200/80 mt-0.5">Теперь вы можете создавать ботов 🚀</div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Профиль пользователя */}
         <div className="rounded-2xl bg-slate-900/80 border border-white/10 p-4 flex items-center justify-between">
@@ -223,6 +251,8 @@ export default function BotsList() {
           onClose={() => setShowPaymentModal(false)}
           onSuccess={() => {
             setShowPaymentModal(false);
+            // 👀 Ставим флаг что была активация
+            sessionStorage.setItem('justActivated', 'true');
             loadData();
           }}
         />
@@ -259,15 +289,24 @@ function PaymentModal({ onClose, onSuccess }) {
       if (p >= 100) {
         clearInterval(interval);
         setTimeout(async () => {
-          setStep('success');
-          
           try {
+            // ✅ Сначала активируем доступ на бэкенде
             await apiGrantAccessDev();
+            console.log("✅ Access granted via dev endpoint");
+            
+            // ✅ Показываем успех
+            setStep('success');
+            
+            // ✅ Через 1.5 секунды обновляем страницу
+            setTimeout(() => {
+              console.log("🔄 Reloading page after successful payment");
+              onSuccess();
+            }, 1500);
           } catch (err) {
-            console.error("Failed to grant access:", err);
+            console.error("❌ Failed to grant access:", err);
+            alert("Ошибка активации доступа. Попробуйте перезагрузить страницу.");
+            onClose();
           }
-          
-          setTimeout(() => onSuccess(), 1500);
         }, 500);
       }
     }, 200);
@@ -391,6 +430,7 @@ function PaymentModal({ onClose, onSuccess }) {
             <div>
               <div className="text-xl font-semibold mb-2">Оплата подтверждена!</div>
               <div className="text-sm text-white/60">Доступ активирован 🎉</div>
+              <div className="text-xs text-white/40 mt-2">Обновление...</div>
             </div>
           </div>
         )}
