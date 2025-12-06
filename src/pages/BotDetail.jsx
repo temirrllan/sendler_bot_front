@@ -11,6 +11,10 @@ export default function BotDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Модальное окно удаления
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
 
   async function load() {
     setLoading(true);
@@ -51,11 +55,25 @@ export default function BotDetail() {
     }
   }
 
-  async function handleDelete() {
+  function openDeleteModal() {
+    setShowDeleteModal(true);
+    setDeleteInput("");
+  }
+
+  function closeDeleteModal() {
+    setShowDeleteModal(false);
+    setDeleteInput("");
+  }
+
+  async function confirmDelete() {
     if (!bot) return;
     
-    const confirmed = window.confirm("Вы уверены, что хотите удалить бота?");
-    if (!confirmed) return;
+    // Проверяем что введенное имя совпадает с именем бота
+    const botFullName = bot.username;
+    
+    if (deleteInput.trim() !== botFullName) {
+      return; // Не удаляем если имена не совпадают
+    }
     
     setActionLoading(true);
     try {
@@ -64,6 +82,7 @@ export default function BotDetail() {
     } catch (e) {
       alert(e.message || "Ошибка удаления");
       setActionLoading(false);
+      closeDeleteModal();
     }
   }
 
@@ -93,6 +112,7 @@ export default function BotDetail() {
   }
 
   const isBlocked = bot.status === "blocked";
+  const canDelete = deleteInput.trim() === bot.username;
 
   return (
     <div className="min-h-screen bg-[#0A0E27] text-white">
@@ -217,13 +237,54 @@ export default function BotDetail() {
 
         {/* Кнопка удаления */}
         <button
-          onClick={handleDelete}
+          onClick={openDeleteModal}
           disabled={actionLoading}
           className="w-full h-12 rounded-2xl border border-red-400/30 text-red-400 hover:bg-red-400/10 font-medium text-sm transition-colors disabled:opacity-50"
         >
-          {actionLoading ? "..." : "Удалить бота"}
+          Удалить бота
         </button>
       </div>
+
+      {/* Модальное окно удаления */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-[#0f1329] border border-white/10 p-5">
+            <div className="text-base font-semibold mb-3">
+              Вы точно хотите удалить бота?
+            </div>
+            
+            <div className="text-sm text-white/70 mb-4">
+              Для удаления введите имя бота: <span className="font-medium text-white">{bot.username}</span>
+            </div>
+
+            <input
+              type="text"
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              placeholder={bot.username}
+              className="w-full h-12 rounded-2xl bg-[#1a1f3a] border border-white/10 px-4 text-[15px] text-white placeholder:text-white/30 outline-none focus:border-white/20 transition-colors mb-4"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={actionLoading}
+                className="flex-1 h-11 rounded-2xl border border-white/10 text-white/80 hover:text-white hover:border-white/20 transition-colors font-medium text-sm disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              
+              <button
+                onClick={confirmDelete}
+                disabled={actionLoading || !canDelete}
+                className="flex-1 h-11 rounded-2xl bg-white/10 text-white hover:bg-white/20 transition-colors font-medium text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? "..." : "Удалить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
