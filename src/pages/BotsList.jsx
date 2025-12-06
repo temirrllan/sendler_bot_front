@@ -263,12 +263,10 @@ export default function BotsList() {
 
 // Модальное окно оплаты (мок)
 function PaymentModal({ onClose, onSuccess }) {
-  const [step, setStep] = useState('payment');
-  const [progress, setProgress] = useState(0);
-
-  const wallet = "UQD8xample9w8a7l2l3e4t5address6here7";
-  const code = "123456789012";
   const [copied, setCopied] = useState({ wallet: false, code: false });
+
+  const wallet = process.env.VITE_CRYPTO_WALLET || "UQD8xample9w8a7l2l3e4t5address6here7";
+  const code = "123456789012"; // Генерируется на бэкенде через API
 
   const copy = (text, type) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -279,44 +277,11 @@ function PaymentModal({ onClose, onSuccess }) {
     });
   };
 
-  const handlePayment = async () => {
-    setStep('verifying');
-    
-    let p = 0;
-    const interval = setInterval(() => {
-      p += 10;
-      setProgress(p);
-      if (p >= 100) {
-        clearInterval(interval);
-        setTimeout(async () => {
-          try {
-            // ✅ Сначала активируем доступ на бэкенде
-            await apiGrantAccessDev();
-            console.log("✅ Access granted via dev endpoint");
-            
-            // ✅ Показываем успех
-            setStep('success');
-            
-            // ✅ Через 1.5 секунды обновляем страницу
-            setTimeout(() => {
-              console.log("🔄 Reloading page after successful payment");
-              onSuccess();
-            }, 1500);
-          } catch (err) {
-            console.error("❌ Failed to grant access:", err);
-            alert("Ошибка активации доступа. Попробуйте перезагрузить страницу.");
-            onClose();
-          }
-        }, 500);
-      }
-    }, 200);
-  };
-
   return (
     <div 
       className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm grid place-items-center p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget && step === 'payment') {
+        if (e.target === e.currentTarget) {
           onClose();
         }
       }}
@@ -325,115 +290,80 @@ function PaymentModal({ onClose, onSuccess }) {
         className="w-full max-w-sm rounded-2xl bg-slate-950 border border-white/10 p-6 space-y-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        
-        {step === 'payment' && (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold">Купить доступ</h3>
-              <button 
-                onClick={onClose} 
-                className="text-white/60 hover:text-white transition-colors"
-                aria-label="Закрыть"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold">Купить доступ</h3>
+          <button 
+            onClick={onClose} 
+            className="text-white/60 hover:text-white transition-colors"
+            aria-label="Закрыть"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm text-white/70 mb-2">Адрес кошелька TON</div>
-                <div className="flex items-center gap-2 bg-slate-900 rounded-xl p-3 border border-white/10">
-                  <div className="flex-1 text-xs font-mono truncate text-white/90">
-                    {wallet}
-                  </div>
-                  <button 
-                    onClick={() => copy(wallet, 'wallet')}
-                    className="shrink-0 px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors font-medium"
-                  >
-                    {copied.wallet ? '✓ Скопировано' : 'Копировать'}
-                  </button>
-                </div>
+        <div className="space-y-4">
+          {/* Адрес кошелька */}
+          <div>
+            <div className="text-sm text-white/70 mb-2">Адрес кошелька TON</div>
+            <div className="flex items-center gap-2 bg-slate-900 rounded-xl p-3 border border-white/10">
+              <div className="flex-1 text-xs font-mono truncate text-white/90">
+                {wallet}
               </div>
-
-              <div>
-                <div className="text-sm text-white/70 mb-2">Проверочный код</div>
-                <div className="flex items-center gap-2 bg-slate-900 rounded-xl p-3 border border-white/10">
-                  <div className="flex-1 text-sm font-mono text-white">
-                    {code}
-                  </div>
-                  <button 
-                    onClick={() => copy(code, 'code')}
-                    className="shrink-0 px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors font-medium"
-                  >
-                    {copied.code ? '✓ Скопировано' : 'Копировать'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-xs text-white/60 space-y-1.5 pt-2 bg-slate-900/50 rounded-xl p-4 border border-white/5">
-                <p className="flex items-start gap-2">
-                  <span className="text-white/40">•</span>
-                  <span>Отправьте минимум <span className="text-white font-semibold">$10 USDT</span></span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <span className="text-white/40">•</span>
-                  <span>Укажите код <span className="text-white font-mono">{code}</span> в комментарии</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <span className="text-white/40">•</span>
-                  <span>Проверка занимает до <span className="text-white">10 минут</span></span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
               <button 
-                onClick={onClose}
-                className="flex-1 rounded-xl bg-slate-800 border border-white/10 py-3 font-medium hover:bg-slate-700 active:scale-[0.98] transition-all"
+                onClick={() => copy(wallet, 'wallet')}
+                className="shrink-0 px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors font-medium"
               >
-                Отмена
+                {copied.wallet ? '✓ Скопировано' : 'Копировать'}
               </button>
-              <button 
-                onClick={handlePayment}
-                className="flex-1 rounded-xl bg-white text-slate-900 py-3 font-semibold hover:bg-white/90 active:scale-[0.98] transition-all"
-              >
-                Я оплатил
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 'verifying' && (
-          <div className="text-center py-8 space-y-6">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-white/60" />
-            <div>
-              <div className="text-lg font-semibold mb-2">Проверяем оплату...</div>
-              <div className="text-sm text-white/60">Это займёт несколько секунд</div>
-            </div>
-            <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-white to-white/80 transition-all duration-200 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="text-xs text-white/40">{progress}%</div>
-          </div>
-        )}
-
-        {step === 'success' && (
-          <div className="text-center py-10 space-y-4">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-400/30 mx-auto grid place-items-center">
-              <svg className="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-xl font-semibold mb-2">Оплата подтверждена!</div>
-              <div className="text-sm text-white/60">Доступ активирован 🎉</div>
-              <div className="text-xs text-white/40 mt-2">Обновление...</div>
             </div>
           </div>
-        )}
+
+          {/* Проверочный код */}
+          <div>
+            <div className="text-sm text-white/70 mb-2">Проверочный код</div>
+            <div className="flex items-center gap-2 bg-slate-900 rounded-xl p-3 border border-white/10">
+              <div className="flex-1 text-sm font-mono text-white">
+                {code}
+              </div>
+              <button 
+                onClick={() => copy(code, 'code')}
+                className="shrink-0 px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors font-medium"
+              >
+                {copied.code ? '✓ Скопировано' : 'Копировать'}
+              </button>
+            </div>
+          </div>
+
+          {/* Инструкции */}
+          <div className="text-xs text-white/60 space-y-1.5 pt-2 bg-slate-900/50 rounded-xl p-4 border border-white/5">
+            <p className="flex items-start gap-2">
+              <span className="text-white/40">•</span>
+              <span>Отправьте минимум <span className="text-white font-semibold">$10 USDT</span></span>
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-white/40">•</span>
+              <span>Укажите код <span className="text-white font-mono">{code}</span> в комментарии</span>
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-white/40">•</span>
+              <span>Проверка занимает до <span className="text-white">10 минут</span></span>
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-white/40">•</span>
+              <span className="text-amber-400">После оплаты вернитесь в бота и нажмите "Проверить оплату"</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Только кнопка закрытия */}
+        <div className="flex gap-2 pt-2">
+          <button 
+            onClick={onClose}
+            className="flex-1 rounded-xl bg-slate-800 border border-white/10 py-3 font-medium hover:bg-slate-700 active:scale-[0.98] transition-all"
+          >
+            Закрыть
+          </button>
+        </div>
       </div>
     </div>
   );
