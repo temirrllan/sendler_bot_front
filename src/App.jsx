@@ -6,6 +6,7 @@ import BotsList from "./pages/BotsList";
 import AddGroup from "./pages/AddGroup";
 import BotDetail from "./pages/BotDetail";
 import BotCreate from "./pages/BotCreate";
+import DeletedBots from "./pages/DeletedBots";
 
 /** Примитивный ErrorBoundary, чтобы не было "пустого экрана" */
 class ErrorBoundary extends React.Component {
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/bot/:id" element={<BotDetail />} />
             <Route path="/bot/:id/add-group" element={<AddGroup />} />
             {/* Фолбэк на главную для любых других путей */}
+            <Route path="/deleted" element={<DeletedBots />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

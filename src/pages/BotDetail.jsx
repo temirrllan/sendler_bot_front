@@ -122,22 +122,23 @@ export default function BotDetail() {
   }
 
   // Удаление бота
-  async function handleDelete() {
-    try {
-      await apiDeleteBot(id);
-      console.log("✅ Bot deleted");
-      
-      showToast("Бот удален");
-      
-      // Возвращаемся на главную через 1 секунду
-      setTimeout(() => navigate("/"), 1000);
-    } catch (e) {
-      console.error("❌ Delete bot error:", e);
-      showToast(e.message || "Ошибка удаления", "error");
-    } finally {
-      setShowDeleteModal(false);
-    }
+  // Удаление бота
+async function handleDelete() {
+  try {
+    await apiDeleteBot(id);
+    console.log("✅ Bot deleted");
+    
+    showToast("Бот удален");
+    
+    // Возвращаемся на главную через 1 секунду
+    setTimeout(() => navigate("/"), 1000);
+  } catch (e) {
+    console.error("❌ Delete bot error:", e);
+    showToast(e.message || "Ошибка удаления", "error");
+  } finally {
+    setShowDeleteModal(false);
   }
+}
 
   // Блокировка/разблокировка бота
   async function toggleBotStatus() {
