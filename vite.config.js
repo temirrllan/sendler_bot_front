@@ -2,6 +2,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from '@tailwindcss/vite';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -12,12 +13,16 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        admin: path.resolve(__dirname, 'admin.html'),  // ✅ Админка
+      },
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['framer-motion', 'lucide-react'],
         }
-      }
+      },
     }
   },
   
@@ -28,8 +33,8 @@ export default defineConfig({
     allowedHosts: [
       "localhost",
       "127.0.0.1",
-      ".ngrok-free.app", // для ngrok в dev
-      ".vercel.app",     // для vercel preview
+      ".ngrok-free.app",
+      ".vercel.app",
     ],
   },
   
@@ -37,5 +42,12 @@ export default defineConfig({
   preview: {
     port: 5173,
     host: true,
-  }
+  },
+  
+  // Resolve aliases
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 });
