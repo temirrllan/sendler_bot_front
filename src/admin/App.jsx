@@ -155,7 +155,7 @@ function UsersPage() {
   async function loadUsers() {
     try {
       setLoading(true);
-      const data = await request('/admin-panel/users?limit=50');
+      const data = await request('/admin-panel/users?limit=100');
       setUsers(data.items || []);
     } catch (e) {
       console.error(e);
@@ -168,57 +168,92 @@ function UsersPage() {
     !search || 
     u.username?.toLowerCase().includes(search.toLowerCase()) ||
     u.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+    u.lastName?.toLowerCase().includes(search.toLowerCase()) ||
     String(u.tgId).includes(search)
   );
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Users</h1>
-      </div>
+      <h1 className="text-2xl font-bold">Пользователи</h1>
 
-      <input
-        type="text"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search users..."
-        className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white placeholder:text-white/40 outline-none focus:border-white/20"
-      />
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск..."
+          className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white placeholder:text-white/40 outline-none focus:border-white/20"
+        />
+      </div>
 
       {loading ? (
         <div className="text-center py-12 text-white/60">Loading...</div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(user => (
-            <div key={user._id} className="bg-slate-900 rounded-xl p-4 border border-white/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">
-                    {user.firstName} {user.lastName}
-                  </div>
-                  <div className="text-sm text-white/60">
-                    @{user.username || user.tgId}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    user.hasAccess 
-                      ? 'bg-green-500/10 text-green-400' 
-                      : 'bg-red-500/10 text-red-400'
-                  }`}>
-                    {user.hasAccess ? 'Access' : 'No Access'}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    user.status === 'active' 
-                      ? 'bg-blue-500/10 text-blue-400' 
-                      : 'bg-gray-500/10 text-gray-400'
-                  }`}>
-                    {user.status}
-                  </span>
-                </div>
+        <div className="bg-slate-900 rounded-2xl border border-white/10 overflow-hidden">
+          {/* Table Header */}
+          <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b border-white/10 bg-slate-800/50">
+            <div className="text-sm font-medium text-white/70">Пользователь</div>
+            <div className="text-sm font-medium text-white/70">Юзернейм</div>
+            <div className="text-sm font-medium text-white/70">Подписка</div>
+          </div>
+
+          {/* Table Body */}
+          <div className="divide-y divide-white/5">
+            {filtered.length === 0 ? (
+              <div className="px-6 py-12 text-center text-white/60 text-sm">
+                Пользователи не найдены
               </div>
-            </div>
-          ))}
+            ) : (
+              filtered.map(user => (
+                <div 
+                  key={user._id} 
+                  className="grid grid-cols-3 gap-4 px-6 py-4 hover:bg-white/5 transition-colors"
+                >
+                  {/* Пользователь */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-700 grid place-items-center text-sm font-medium shrink-0">
+                      {user.firstName?.[0] || user.username?.[0] || 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">
+                        {user.firstName || user.lastName 
+                          ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                          : user.username || `User ${user.tgId}`
+                        }
+                      </div>
+                      <div className="text-xs text-white/50">
+                        ID: {user.tgId}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Юзернейм */}
+                  <div className="flex items-center">
+                    <span className="text-white/80">
+                      @{user.username || user.tgId}
+                    </span>
+                  </div>
+
+                  {/* Подписка */}
+                  <div className="flex items-center">
+                    <span className={`text-sm font-medium ${
+                      user.hasAccess ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {user.hasAccess ? 'активна' : 'нет'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Counter */}
+      {!loading && filtered.length > 0 && (
+        <div className="text-sm text-white/50 text-center">
+          Показано {filtered.length} из {users.length} пользователей
         </div>
       )}
     </div>
