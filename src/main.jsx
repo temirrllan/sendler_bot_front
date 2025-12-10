@@ -21,13 +21,17 @@ function Root() {
         console.log("🔄 Loading user profile...");
         const data = await apiGetMe();
         
+        // ✅ ВАЖНО: apiGetMe возвращает { user: {...} }
+        const userData = data?.user;
+        
         console.log("✅ User loaded:", {
-          tgId: data?.user?.tgId,
-          username: data?.user?.username,
-          isAdmin: data?.user?.isAdmin,
+          tgId: userData?.tgId,
+          username: userData?.username,
+          isAdmin: userData?.isAdmin,
+          rawData: userData, // полный объект для дебага
         });
         
-        setUser(data?.user);
+        setUser(userData);
       } catch (err) {
         console.error("❌ Failed to load user:", err);
         setError(err.message || "Ошибка загрузки");
@@ -69,14 +73,20 @@ function Root() {
     );
   }
 
-  // ✅ Админ-панель для админов
-  if (user?.isAdmin) {
-    console.log("👑 Rendering Admin Panel");
+  // ✅ ПРОВЕРКА: Выводим в консоль перед рендером
+  console.log("🎯 Render decision:", {
+    isAdmin: user?.isAdmin,
+    userObject: user,
+  });
+
+  // ✅ Админ-панель для админов (строгая проверка)
+  if (user?.isAdmin === true) {
+    console.log("👑 Rendering Admin Panel for:", user.username);
     return <AdminPanel />;
   }
 
   // ✅ Обычное приложение для пользователей
-  console.log("👤 Rendering User App");
+  console.log("👤 Rendering User App for:", user?.username);
   return (
     <BrowserRouter>
       <App />
