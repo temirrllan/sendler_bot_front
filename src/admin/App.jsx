@@ -1,3 +1,4 @@
+// frontend/src/admin/App.jsx
 import { useState, useEffect } from 'react';
 import { Menu, X, Users, Bot, Trash2, BarChart3, LogOut } from 'lucide-react';
 
@@ -103,7 +104,7 @@ function Sidebar({ active, onNavigate, admin, onLogout, isOpen, onClose }) {
                   {admin.firstName} {admin.lastName}
                 </div>
                 <div className="text-xs text-white/50">
-                  @{admin.username || admin.telegramId}
+                  @{admin.username || admin.tgId}
                 </div>
               </div>
             </div>
@@ -287,6 +288,57 @@ function BotsPage() {
   );
 }
 
+function DeletedBotsPage() {
+  const [bots, setBots] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadBots();
+  }, []);
+
+  async function loadBots() {
+    try {
+      setLoading(true);
+      const data = await request('/admin-panel/bots/deleted?limit=50');
+      setBots(data.items || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="p-4 lg:p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Deleted Bots</h1>
+
+      {loading ? (
+        <div className="text-center py-12 text-white/60">Loading...</div>
+      ) : bots.length === 0 ? (
+        <div className="text-center py-12 text-white/60">No deleted bots</div>
+      ) : (
+        <div className="space-y-2">
+          {bots.map(bot => (
+            <div key={bot._id} className="bg-slate-900 rounded-xl p-4 border border-white/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">@{bot.username}</div>
+                  <div className="text-sm text-white/60">
+                    Deleted by: {bot.deletedByType}
+                  </div>
+                </div>
+                <div className="text-xs text-white/60">
+                  {new Date(bot.deletedAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Main App
 export default function AdminPanel() {
   const [admin, setAdmin] = useState(null);
@@ -316,10 +368,13 @@ export default function AdminPanel() {
         request('/admin-panel/stats'),
       ]);
       
+      console.log("✅ Admin data loaded:", adminData);
+      console.log("✅ Stats loaded:", statsData);
+      
       setAdmin(adminData.admin);
       setStats(statsData);
     } catch (e) {
-      console.error(e);
+      console.error("❌ Load error:", e);
       setError(e.message || 'Failed to load data');
     } finally {
       setLoading(false);
@@ -338,7 +393,8 @@ export default function AdminPanel() {
     return (
       <div className="min-h-screen bg-[#0A0E27] text-white grid place-items-center">
         <div className="text-center">
-          <div className="text-lg">Loading...</div>
+          <div className="inline-block w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin mb-3" />
+          <div className="text-sm text-white/60">Loading admin panel...</div>
         </div>
       </div>
     );
@@ -386,12 +442,7 @@ export default function AdminPanel() {
           {page === 'dashboard' && <Dashboard stats={stats} />}
           {page === 'users' && <UsersPage />}
           {page === 'bots' && <BotsPage />}
-          {page === 'deleted' && (
-            <div className="p-4 lg:p-6">
-              <h1 className="text-2xl font-bold">Deleted Bots</h1>
-              <div className="text-white/60 mt-4">Coming soon...</div>
-            </div>
-          )}
+          {page === 'deleted' && <DeletedBotsPage />}
         </div>
       </div>
     </div>

@@ -13,10 +13,7 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, 'index.html'),
-        admin: path.resolve(__dirname, 'admin.html'),  // ✅ Админка
-      },
+      // ✅ Убрали multiple inputs - теперь только один index.html
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
